@@ -165,25 +165,6 @@ func newRelayerClient(b *brokerExt, conn grpc.ClientConnInterface) *relayerClien
 	return &relayerClient{b, newServiceClient(b, conn), pb.NewRelayerClient(conn)}
 }
 
-func (r *relayerClient) NewConfigProvider(ctx context.Context, rargs types.RelayArgs) (types.ConfigProvider, error) {
-	cc := r.newClientConn("ConfigProvider", func(ctx context.Context) (uint32, resources, error) {
-		reply, err := r.relayer.NewConfigProvider(ctx, &pb.NewConfigProviderRequest{
-			RelayArgs: &pb.RelayArgs{
-				ExternalJobID: rargs.ExternalJobID[:],
-				JobID:         rargs.JobID,
-				ContractID:    rargs.ContractID,
-				New:           rargs.New,
-				RelayConfig:   rargs.RelayConfig,
-			},
-		})
-		if err != nil {
-			return 0, nil, err
-		}
-		return reply.ConfigProviderID, nil, nil
-	})
-	return newConfigProviderClient(r.withName("ConfigProviderClient"), cc), nil
-}
-
 func (r *relayerClient) NewPluginProvider(ctx context.Context, rargs types.RelayArgs, pargs types.PluginArgs) (types.PluginProvider, error) {
 	cc := r.newClientConn("PluginProvider", func(ctx context.Context) (uint32, resources, error) {
 		reply, err := r.relayer.NewPluginProvider(ctx, &pb.NewPluginProviderRequest{
