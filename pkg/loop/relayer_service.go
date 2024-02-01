@@ -40,13 +40,6 @@ func NewRelayerService(lggr logger.Logger, grpcOpts GRPCOpts, cmd func() *exec.C
 	return &rs
 }
 
-func (r *RelayerService) NewConfigProvider(ctx context.Context, args types.RelayArgs) (types.ConfigProvider, error) {
-	if err := r.WaitCtx(ctx); err != nil {
-		return nil, err
-	}
-	return r.Service.NewConfigProvider(ctx, args)
-}
-
 func (r *RelayerService) NewPluginProvider(ctx context.Context, rargs types.RelayArgs, pargs types.PluginArgs) (types.PluginProvider, error) {
 	if err := r.WaitCtx(ctx); err != nil {
 		return nil, err

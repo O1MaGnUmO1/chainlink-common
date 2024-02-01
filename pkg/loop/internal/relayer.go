@@ -8,8 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/O1MaGnUmO1/chainlink-common/pkg/logger"
@@ -279,39 +277,6 @@ func newChainRelayerServer(impl Relayer, b *brokerExt) *relayerServer {
 	return &relayerServer{impl: impl, brokerExt: b.withName("ChainRelayerServer")}
 }
 
-func (r *relayerServer) NewConfigProvider(ctx context.Context, request *pb.NewConfigProviderRequest) (*pb.NewConfigProviderReply, error) {
-	exJobID, err := uuid.FromBytes(request.RelayArgs.ExternalJobID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid uuid bytes for ExternalJobID: %w", err)
-	}
-	cp, err := r.impl.NewConfigProvider(ctx, types.RelayArgs{
-		ExternalJobID: exJobID,
-		JobID:         request.RelayArgs.JobID,
-		ContractID:    request.RelayArgs.ContractID,
-		New:           request.RelayArgs.New,
-		RelayConfig:   request.RelayArgs.RelayConfig,
-	})
-	if err != nil {
-		return nil, err
-	}
-	err = cp.Start(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	const name = "ConfigProvider"
-	id, _, err := r.serveNew(name, func(s *grpc.Server) {
-		pb.RegisterServiceServer(s, &serviceServer{srv: cp})
-		pb.RegisterOffchainConfigDigesterServer(s, &offchainConfigDigesterServer{impl: cp.OffchainConfigDigester()})
-		pb.RegisterContractConfigTrackerServer(s, &contractConfigTrackerServer{impl: cp.ContractConfigTracker()})
-	}, resource{cp, name})
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.NewConfigProviderReply{ConfigProviderID: id}, nil
-}
-
 func (r *relayerServer) NewPluginProvider(ctx context.Context, request *pb.NewPluginProviderRequest) (*pb.NewPluginProviderReply, error) {
 	exJobID, err := uuid.FromBytes(request.RelayArgs.ExternalJobID)
 	if err != nil {
@@ -331,12 +296,6 @@ func (r *relayerServer) NewPluginProvider(ctx context.Context, request *pb.NewPl
 	}
 
 	switch request.RelayArgs.ProviderType {
-	case string(types.Median):
-		id, err := r.newMedianProvider(ctx, relayArgs, pluginArgs)
-		if err != nil {
-			return nil, err
-		}
-		return &pb.NewPluginProviderReply{PluginProviderID: id}, nil
 	case string(types.GenericPlugin):
 		id, err := r.newPluginProvider(ctx, relayArgs, pluginArgs)
 		if err != nil {
@@ -346,47 +305,6 @@ func (r *relayerServer) NewPluginProvider(ctx context.Context, request *pb.NewPl
 	}
 
 	return nil, fmt.Errorf("provider type not supported: %s", relayArgs.ProviderType)
-}
-
-func (r *relayerServer) newMedianProvider(ctx context.Context, relayArgs types.RelayArgs, pluginArgs types.PluginArgs) (uint32, error) {
-	i, ok := r.impl.(MedianProvider)
-	if !ok {
-		return 0, status.Error(codes.Unimplemented, "median not supported")
-	}
-
-	provider, err := i.NewMedianProvider(ctx, relayArgs, pluginArgs)
-	if err != nil {
-		return 0, err
-	}
-	err = provider.Start(ctx)
-	if err != nil {
-		return 0, err
-	}
-	const name = "MedianProvider"
-	providerRes := resource{name: name, Closer: provider}
-
-	id, _, err := r.serveNew(name, func(s *grpc.Server) {
-		pb.RegisterServiceServer(s, &serviceServer{srv: provider})
-		pb.RegisterOffchainConfigDigesterServer(s, &offchainConfigDigesterServer{impl: provider.OffchainConfigDigester()})
-		pb.RegisterContractConfigTrackerServer(s, &contractConfigTrackerServer{impl: provider.ContractConfigTracker()})
-		pb.RegisterContractTransmitterServer(s, &contractTransmitterServer{impl: provider.ContractTransmitter()})
-		pb.RegisterReportCodecServer(s, &reportCodecServer{impl: provider.ReportCodec()})
-		pb.RegisterMedianContractServer(s, &medianContractServer{impl: provider.MedianContract()})
-		if provider.ChainReader() != nil {
-			pb.RegisterChainReaderServer(s, &chainReaderServer{impl: provider.ChainReader()})
-		}
-
-		if provider.Codec() != nil {
-			pb.RegisterCodecServer(s, &codecServer{impl: provider.Codec()})
-		}
-
-		pb.RegisterOnchainConfigCodecServer(s, &onchainConfigCodecServer{impl: provider.OnchainConfigCodec()})
-	}, providerRes)
-	if err != nil {
-		return 0, err
-	}
-
-	return id, err
 }
 
 func (r *relayerServer) newPluginProvider(ctx context.Context, relayArgs types.RelayArgs, pluginArgs types.PluginArgs) (uint32, error) {
