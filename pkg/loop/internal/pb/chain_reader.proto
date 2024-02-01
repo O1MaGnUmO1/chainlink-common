@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option go_package = "github.com/O1MaGnUmO1/chainlink-common/pkg/loop/internal/pb";
+
+package loop;
+
+import "codec.proto";
+import "google/protobuf/empty.proto";
+
+service ChainReader {
+  rpc GetLatestValue (GetLatestValueRequest) returns (GetLatestValueReply) {}
+  rpc Bind(BindRequest) returns (google.protobuf.Empty) {}
+}
+
+// GetLatestValueRequest has arguments for [github.com/O1MaGnUmO1/chainlink-common/pkg/types.ChainReader.GetLatestValue].
+message GetLatestValueRequest {
+  string contractName = 1;
+  string method = 2;
+  VersionedBytes params = 3;
+}
+
+// GetLatestValueReply has return arguments for [github.com/O1MaGnUmO1/chainlink-common/pkg/types.ChainReader.GetLatestValue].
+message GetLatestValueReply {
+  VersionedBytes retVal = 1;
+}
+
+message BindRequest {
+  repeated BoundContract bindings = 1;
+}
+
+// BoundContract represents a [github.com/O1MaGnUmO1/chainlink-common/pkg/types.BoundContract].
+message BoundContract {
+  string address = 1;
+  string name = 2;
+  bool pending = 3;
+}
