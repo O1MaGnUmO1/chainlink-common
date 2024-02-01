@@ -49,5 +49,4 @@ type ChainService interface {
 // Deprecated: use loop.Relayer, which includes context.Context.
 type Relayer interface {
 	Service
-	NewConfigProvider(rargs RelayArgs) (ConfigProvider, error)
 }

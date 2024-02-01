@@ -29,7 +29,5 @@ type AutomationProvider interface {
 // Relayer extends [types.Relayer] and includes [context.Context]s.
 type Relayer interface {
 	types.ChainService
-
-	NewConfigProvider(context.Context, types.RelayArgs) (types.ConfigProvider, error)
 	NewPluginProvider(context.Context, types.RelayArgs, types.PluginArgs) (types.PluginProvider, error)
 }
